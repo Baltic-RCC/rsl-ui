@@ -1,0 +1,1 @@
+sudo docker exec -it dockerized-QoCDC /bin/bash
