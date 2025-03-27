@@ -1,54 +1,44 @@
-FROM centos
-Maintainer QA-APRICO
-ENV container docker
+# Use a JDK 17 base image from Eclipse Temurin
+FROM eclipse-temurin:17-jdk-jammy AS base
 
-RUN (cd /lib/systemd/system/sysinit.target.wants/; for i in *; do [ $i == \
-systemd-tmpfiles-setup.service ] || rm -f $i; done); \
-rm -f /lib/systemd/system/multi-user.target.wants/*;\
-rm -f /etc/systemd/system/*.wants/*;\
-rm -f /lib/systemd/system/local-fs.target.wants/*; \
-rm -f /lib/systemd/system/sockets.target.wants/*udev*; \
-rm -f /lib/systemd/system/sockets.target.wants/*initctl*; \
-rm -f /lib/systemd/system/basic.target.wants/*;\
-rm -f /lib/systemd/system/anaconda.target.wants/*;
+# Set working directory
+WORKDIR /app
 
-# Install anything. The service you want to start must be a SystemD service.
+# Install Python and necessary packages
+RUN apt-get update && apt-get install -y \
+    python3 \
+    python3-pip \
+    python3-venv \
+    unzip \
+    && rm -rf /var/lib/apt/lists/*
 
-RUN yum -y update
-RUN yum install -y maven
-RUN yum install -y unzip
-RUN yum install -y sudo
-RUN yum install -y nano
-RUN yum install -y bsdtar
+# Create a virtual environment
+RUN python3 -m venv /app/venv
 
-# download the  Java jdk11
-RUN yum -y remove java
-RUN yum -y install java-11-openjdk
+# Activate virtual environment and install Python packages
+ENV PATH="/app/venv/bin:$PATH"
 
-#Configure python
-#RUN dnf install -y python3
-RUN yum -y install python3-pip
-RUN alternatives --set python /usr/bin/python3
-RUN ln -s /usr/bin/pip3 /usr/bin/pip
-RUN python3 -m pip install pandas
-RUN python3 -m pip install aniso8601
-RUN python3 -m pip install lxml
-RUN python3 -m pip install dirtyjson
-RUN python3 -m pip install openpyxl
+# Install required Python packages (update as needed)
+RUN pip install --upgrade pip && pip install \
+    dash \
+    flask \
+    werkzeug
 
-#Copy validation engine, ruleset library and python scripts
-COPY remote/* /home/tmp/
+# Copy app code
+COPY web-app.py /app/web-app.py
+COPY validation_api.py /app/validation_api.py
 
-#Project ENV
-ARG StandaloneValidationTool
+# Copy your SVT tool folders
+COPY lib /app/lib
+COPY workspace /app/workspace
+COPY etc /app/etc
 
-#Project deployment
-#RUN tar xvzf /home/tmp/${StandaloneValidationTool}.tar.gz  -C /home/
-WORKDIR '/home/tmp'
-RUN tar xvzf "$(find standalone-validation-tool*.tar.gz)"
-RUN mv "$(find -type d -name 'standalone-validation-tool*')" /home/standalone-validation-tool
+# Set JAVA_HOME (usually already correct, but just in case)
+ENV JAVA_HOME=/opt/java/openjdk
+ENV PATH="${JAVA_HOME}/bin:${PATH}"
 
-WORKDIR '/home/tmp'
-RUN unzip "$(find configured-rule-set-lib*.zip)"
-RUN rm -rf /home/standalone-validation-tool/workspace/rule-set-library/*
-RUN mv "$(find -maxdepth 1 -type d -name 'RSL*')"/* /home/standalone-validation-tool/workspace/rule-set-library
+# Expose the Dash/Flask app port
+EXPOSE 8050
+
+# Run the app
+CMD ["python3", "web-app.py"]
