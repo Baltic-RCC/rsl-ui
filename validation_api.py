@@ -5,6 +5,7 @@ import logging
 import uuid
 import zipfile
 from io import BytesIO
+from pathlib import Path
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -32,6 +33,13 @@ def delete_path(path):
         print(f"Deleted: {path}")
     else:
         print(f"Path does not exist: {path}")
+
+def clean_dir(dir: Path):
+    for item in dir.iterdir():
+        if item.is_file() or item.is_symlink():
+            item.unlink()
+        elif item.is_dir():
+            shutil.rmtree(item)
 
 def zip_output_files(output_dir=OUTPUT_DIR):
     """Zip all files in the output directory and return as a BytesIO object."""
