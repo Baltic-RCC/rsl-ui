@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: validator-ui
+  namespace: default
+  labels:
+    app: validator-ui
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: validator-ui
+  template:
+    metadata:
+      labels:
+        app: validator-ui
+    spec:
+      containers:
+      - name: validator-ui
+        image: validator-ui:latest  # Replace with your image if hosted (e.g., docker.io/username/validator-ui:latest)
+        ports:
+        - containerPort: 8050
+        env:
+        - name: APP_ENV
+          valueFrom:
+            configMapKeyRef:
+              name: validator-ui-config
+              key: APP_ENV
+        - name: LOG_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              name: validator-ui-config
+              key: LOG_LEVEL
+        - name: API_ENDPOINT
+          valueFrom:
+            configMapKeyRef:
+              name: validator-ui-config
+              key: API_ENDPOINT
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: validator-ui-service
+  namespace: default
+spec:
+  selector:
+    app: validator-ui
+  ports:
+  - protocol: TCP
+    port: 8050
+    targetPort: 8050
+  type: ClusterIP  # Use NodePort or LoadBalancer if external access is needed directly
