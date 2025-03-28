@@ -6,6 +6,7 @@ import uuid
 import zipfile
 from io import BytesIO
 from pathlib import Path
+import xml.etree.ElementTree as etree
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -147,6 +148,12 @@ def create_validation_context(validation_instance=None):
             os.makedirs(dir_path, exist_ok=True)
 
     return validation_base_path, validation_input_path, validation_output_path
+
+def get_ruleset_version():
+    tree = etree.parse(os.path.join(RULE_SET_DIR, 'config', 'config.xml'))
+    root = tree.getroot()
+    rsl_version = root.find('{http://entsoe.eu/CIM/Extensions/CGM-BP/2020#}rslVersion').text
+    return rsl_version
 
 
 if __name__ == "__main__":
