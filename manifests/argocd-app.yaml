@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: validator-ui
+  namespace: argocd  # ArgoCD’s namespace
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/your-username/your-repo.git  # Replace with your Git repo URL
+    targetRevision: main  # Branch or tag to track
+    path: manifests  # Directory in repo with k8s manifests
+  destination:
+    server: https://kubernetes.default.svc  # Default in-cluster server
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: true  # Remove resources not in Git
+      selfHeal: true  # Revert manual changes
+    syncOptions:
+    - CreateNamespace=true  # Create namespace if it doesn’t exist
