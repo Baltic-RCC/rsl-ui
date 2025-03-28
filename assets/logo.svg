@@ -1,0 +1,313 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+<svg
+   width="17.727081mm"
+   height="17.727079mm"
+   viewBox="0 0 17.727081 17.727079"
+   version="1.1"
+   id="svg5"
+   inkscape:version="1.2 (dc2aedaf03, 2022-05-15)"
+   sodipodi:docname="Logo only (no backround)_1.svg"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview7"
+     pagecolor="#505050"
+     bordercolor="#eeeeee"
+     borderopacity="1"
+     inkscape:pageshadow="0"
+     inkscape:pageopacity="0"
+     inkscape:pagecheckerboard="0"
+     inkscape:document-units="mm"
+     showgrid="false"
+     inkscape:snap-grids="true"
+     inkscape:snap-page="false"
+     inkscape:zoom="4.3994184"
+     inkscape:cx="90.466503"
+     inkscape:cy="137.06357"
+     inkscape:window-width="2560"
+     inkscape:window-height="1377"
+     inkscape:window-x="2552"
+     inkscape:window-y="-8"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="g132"
+     inkscape:showpageshadow="2"
+     inkscape:deskcolor="#505050" />
+  <defs
+     id="defs2">
+    <linearGradient
+       id="linearGradient6919"
+       inkscape:swatch="solid">
+      <stop
+         style="stop-color:#9e1b34;stop-opacity:1;"
+         offset="0"
+         id="stop6921" />
+    </linearGradient>
+    <linearGradient
+       id="linearGradient6913"
+       inkscape:swatch="solid">
+      <stop
+         style="stop-color:#0072ce;stop-opacity:1;"
+         offset="0"
+         id="stop6915" />
+    </linearGradient>
+    <linearGradient
+       id="linearGradient6901"
+       inkscape:swatch="solid">
+      <stop
+         style="stop-color:#ffffff;stop-opacity:1;"
+         offset="0"
+         id="stop6903" />
+    </linearGradient>
+    <linearGradient
+       id="linearGradient6895"
+       inkscape:swatch="solid">
+      <stop
+         style="stop-color:#ffb91d;stop-opacity:1;"
+         offset="0"
+         id="stop6897" />
+    </linearGradient>
+    <linearGradient
+       id="linearGradient6889"
+       inkscape:swatch="solid">
+      <stop
+         style="stop-color:#006a44;stop-opacity:1;"
+         offset="0"
+         id="stop6891" />
+    </linearGradient>
+    <linearGradient
+       id="linearGradient6883"
+       inkscape:swatch="solid">
+      <stop
+         style="stop-color:#000000;stop-opacity:1;"
+         offset="0"
+         id="stop6885" />
+    </linearGradient>
+    <linearGradient
+       id="linearGradient6877"
+       inkscape:swatch="solid">
+      <stop
+         style="stop-color:#c1272d;stop-opacity:1;"
+         offset="0"
+         id="stop6879" />
+    </linearGradient>
+    <radialGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient6877"
+       id="radialGradient6927"
+       cx="175.26968"
+       cy="281.78522"
+       fx="175.26968"
+       fy="281.78522"
+       r="10.5"
+       gradientUnits="userSpaceOnUse" />
+    <radialGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient6883"
+       id="radialGradient6929"
+       cx="129.32011"
+       cy="258.88501"
+       fx="129.32011"
+       fy="258.88501"
+       r="10.5"
+       gradientUnits="userSpaceOnUse" />
+    <radialGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient6889"
+       id="radialGradient6931"
+       cx="175.12012"
+       cy="258.88501"
+       fx="175.12012"
+       fy="258.88501"
+       r="10.5"
+       gradientUnits="userSpaceOnUse" />
+    <radialGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient6895"
+       id="radialGradient6933"
+       cx="175.1701"
+       cy="235.9848"
+       fx="175.1701"
+       fy="235.9848"
+       r="10.5"
+       gradientUnits="userSpaceOnUse" />
+    <radialGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient6919"
+       id="radialGradient6937"
+       cx="152.36967"
+       cy="281.78522"
+       fx="152.36967"
+       fy="281.78522"
+       r="10.5"
+       gradientUnits="userSpaceOnUse" />
+    <radialGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient6913"
+       id="radialGradient6939"
+       cx="129.3701"
+       cy="235.9848"
+       fx="129.3701"
+       fy="235.9848"
+       r="10.5"
+       gradientUnits="userSpaceOnUse" />
+    <radialGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient6919"
+       id="radialGradient6941"
+       cx="152.2701"
+       cy="235.9848"
+       fx="152.2701"
+       fy="235.9848"
+       r="10.5"
+       gradientUnits="userSpaceOnUse" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient6901"
+       id="linearGradient10349"
+       x1="141"
+       y1="258.5"
+       x2="162"
+       y2="258.5"
+       gradientUnits="userSpaceOnUse" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient6901"
+       id="linearGradient13891"
+       gradientUnits="userSpaceOnUse"
+       x1="141"
+       y1="258.5"
+       x2="162"
+       y2="258.5"
+       gradientTransform="translate(-23.061573,23.257393)" />
+  </defs>
+  <g
+     inkscape:label="Kiht 1"
+     inkscape:groupmode="layer"
+     id="layer1"
+     transform="translate(-15.430543,-18.383768)">
+    <g
+       id="g132"
+       transform="matrix(0.26458333,0,0,0.26458333,10.037966,-19.737455)">
+      <g
+         id="g100"
+         transform="translate(-97.618605,-80.919788)">
+        <rect
+           inkscape:export-ydpi="600"
+           inkscape:export-xdpi="600"
+           inkscape:export-filename="C:\Users\Kristjan\Desktop\Baltic_RSC_final.png"
+           style="fill:url(#radialGradient6941);fill-opacity:1;stroke-width:2;stroke-miterlimit:4;stroke-dasharray:none"
+           height="21"
+           width="21"
+           class="st2"
+           y="225"
+           x="141"
+           id="rect3336-1-49-9-7-3_1_" />
+        <rect
+           inkscape:export-ydpi="600"
+           inkscape:export-xdpi="600"
+           inkscape:export-filename="C:\Users\Kristjan\Desktop\Baltic_RSC_final.png"
+           style="fill:url(#radialGradient6939);fill-opacity:1;stroke-width:2;stroke-miterlimit:4;stroke-dasharray:none"
+           height="21"
+           width="21"
+           class="st1"
+           y="225"
+           x="118"
+           id="rect3336-1-49-9-7-3_3_" />
+        <rect
+           inkscape:export-ydpi="600"
+           inkscape:export-xdpi="600"
+           inkscape:export-filename="C:\Users\Kristjan\Desktop\Baltic_RSC_final.png"
+           style="fill:url(#radialGradient6937);fill-opacity:1;stroke-width:2;stroke-miterlimit:4;stroke-dasharray:none"
+           height="21"
+           width="21"
+           class="st2"
+           y="271"
+           x="141"
+           id="rect3336-9-8-2-4-1-8_1_" />
+        <rect
+           inkscape:export-ydpi="600"
+           inkscape:export-xdpi="600"
+           inkscape:export-filename="C:\Users\Kristjan\Desktop\Baltic_RSC_final.png"
+           style="fill:url(#radialGradient6933);fill-opacity:1;stroke-width:2;stroke-miterlimit:4;stroke-dasharray:none"
+           height="21"
+           width="21"
+           class="st4"
+           y="225"
+           x="164"
+           id="rect3336-3-2-3-0-7_1_" />
+        <rect
+           inkscape:export-ydpi="600"
+           inkscape:export-xdpi="600"
+           inkscape:export-filename="C:\Users\Kristjan\Desktop\Baltic_RSC_final.png"
+           style="fill:url(#radialGradient6931);fill-opacity:1;stroke-width:2;stroke-miterlimit:4;stroke-dasharray:none"
+           height="21"
+           width="21"
+           class="st5"
+           y="248"
+           x="164"
+           id="rect3336-6-5-71-4-7-1_1_" />
+        <rect
+           inkscape:export-ydpi="600"
+           inkscape:export-xdpi="600"
+           inkscape:export-filename="C:\Users\Kristjan\Desktop\Baltic_RSC_final.png"
+           style="fill:url(#linearGradient10349);fill-opacity:1;stroke-width:2;stroke-miterlimit:4;stroke-dasharray:none"
+           height="21"
+           width="21"
+           class="st5"
+           y="248"
+           x="141"
+           id="rect3336-6-5-71-4-7-1_1_-7" />
+        <rect
+           inkscape:export-ydpi="600"
+           inkscape:export-xdpi="600"
+           inkscape:export-filename="C:\Users\Kristjan\Desktop\Baltic_RSC_final.png"
+           style="fill:url(#linearGradient13891);fill-opacity:1;stroke-width:2;stroke-miterlimit:4;stroke-dasharray:none"
+           height="21"
+           width="21"
+           class="st5"
+           y="271"
+           x="118"
+           id="rect3336-6-5-71-4-7-1_1_-7-2" />
+        <rect
+           inkscape:export-ydpi="600"
+           inkscape:export-xdpi="600"
+           inkscape:export-filename="C:\Users\Kristjan\Desktop\Baltic_RSC_final.png"
+           style="fill:url(#radialGradient6929);fill-opacity:1;stroke-width:2;stroke-miterlimit:4;stroke-dasharray:none"
+           height="21"
+           width="21"
+           y="248"
+           x="118"
+           id="rect3336-6-5-71-4-7-1_3_" />
+        <rect
+           inkscape:export-ydpi="600"
+           inkscape:export-xdpi="600"
+           inkscape:export-filename="C:\Users\Kristjan\Desktop\Baltic_RSC_final.png"
+           style="fill:url(#radialGradient6927);fill-opacity:1;stroke-width:2;stroke-miterlimit:4;stroke-dasharray:none"
+           height="21"
+           width="21"
+           class="st6"
+           y="271"
+           x="164"
+           id="rect3336-9-9-6-5-1-2_1_" />
+      </g>
+    </g>
+  </g>
+  <style
+     type="text/css"
+     id="style3">
+	.st0{enable-background:new    ;}
+	.st1{fill:#0072CE;}
+	.st2{fill:#9E1B34;}
+	.st3{fill:#FFFFFF;}
+	.st4{fill:#FFB91D;}
+	.st5{fill:#006A44;}
+	.st6{fill:#C1272D;}
+	.st7{fill:none;}
+	.st8{font-family:'HelveticaCE';}
+	.st9{font-size:12px;}
+</style>
+</svg>
