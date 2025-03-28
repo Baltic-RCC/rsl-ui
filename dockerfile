@@ -18,12 +18,17 @@ COPY requirements.txt /app/
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Copy your SVT tool folders
+COPY suv /app/suv
+
+# Copy assets
+COPY assets /app/assets
+
 # Copy app code
 COPY web-app.py /app/web-app.py
 COPY validation_api.py /app/validation_api.py
 
-# Copy your SVT tool folders
-COPY suv /app/suv
+
 
 # Set environment variables
 ENV JAVA_HOME=/opt/java/openjdk
