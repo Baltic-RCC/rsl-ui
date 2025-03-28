@@ -147,18 +147,14 @@ def upload_files_api():
     return jsonify({"validation_id": validation_id}), 200
 
 
-# Run validation
-# Delte IGM-s
-# Delte BDS
-# Delte all files
-# Delete single files
-# Explore files/errors
 
 ## Functions
 # List all files
-# Delete files given in a list
-# List RSL and Validator version
-
+# Delete all files
+# Delete all files except BDS
+# Show RSL version
+# Upload/Update RSL
+# Show logs? probably sent to ELK
 
 
 
@@ -175,4 +171,4 @@ def download_validation_results():
     pass
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=8050, debug=False)
