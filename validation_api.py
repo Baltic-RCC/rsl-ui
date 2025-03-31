@@ -56,6 +56,7 @@ def zip_output_files(output_dir=OUTPUT_DIR):
 
 def run_command(command, capture_output=True):
     """Run a command from the /suv directory, optionally capturing output."""
+    validation_log = []
     if capture_output:
         process = subprocess.Popen(
             command,
@@ -71,7 +72,8 @@ def run_command(command, capture_output=True):
             if not line and process.poll() is not None:
                 break
             if line:
-                logger.info(f"Java stdout: {line.strip()}")
+                logger.info(f"{line.strip()}")
+                validation_log.append(line)
 
         # Log stderr
         while True:
@@ -79,13 +81,16 @@ def run_command(command, capture_output=True):
             if not line and process.poll() is not None:
                 break
             if line:
-                logger.error(f"Java stderr: {line.strip()}")
+                logger.info(f"{line.strip()}")
+                validation_log.append(line)
     else:
         process = subprocess.Popen(command, cwd=SUV_DIR)
 
     return_code = process.wait()
     if return_code != 0:
         raise subprocess.CalledProcessError(return_code, command)
+
+    return validation_log
 
 def run_validation(
     input_dir=INPUT_DIR,
@@ -94,6 +99,7 @@ def run_validation(
     rule_set_dir=RULE_SET_DIR,
 ):
 
+    validation_log = []
 
     validation_cmd = [
         JAVA,
@@ -104,7 +110,7 @@ def run_validation(
         "-c", os.path.join(rule_set_dir, "config")
     ]
 
-    # Construct the report generation command with quoted paths
+    # Construct the report generation command
     report_cmd = [
         JAVA,
         "-jar", os.path.join(rule_set_dir, "config", "qar2xlsx.jar"),
@@ -113,24 +119,27 @@ def run_validation(
 
     try:
         logger.info(f"Running validation with command: {' '.join(validation_cmd)}")
-        run_command(validation_cmd, capture_output=True)  # Change to False to test without capture
-
-        logger.info(f"Generating report with command: {' '.join(report_cmd)}")
-        run_command(report_cmd, capture_output=True)  # Change to False to test without capture
-
-        excel_files = [f for f in os.listdir(output_dir) if f.endswith('.xlsx')]
-        if not excel_files:
-            logger.error("No validation report generated")
-            return None
-
-        return zip_output_files(output_dir)
-
+        validation_log.extend(run_command(validation_cmd, capture_output=True))  # Change to False to test without capture
     except subprocess.CalledProcessError as e:
-        logger.error(f"Validation failed with return code {e.returncode}")
+        error_text = f"Validation failed: {e.returncode}"
+        logger.error(error_text)
+        validation_log.extend(error_text)
         return None
-    except FileNotFoundError as e:
-        logger.error(f"File not found error: {e}")
-        return None
+
+    try:
+        logger.info(f"Generating report with command: {' '.join(report_cmd)}")
+        validation_log.extend(run_command(report_cmd, capture_output=True))  # Change to False to test without capture
+    except subprocess.CalledProcessError as e:
+        error_text = [f"Excel Report generation failed: {e.returncode, e.output}", "Make sure that confgi/qar2xslx.jar is in RSL ZIP"]
+        logger.error(error_text)
+        validation_log.extend(error_text)
+
+    return validation_log
+
+
+def download_validation_results(output_dir=OUTPUT_DIR):
+    return zip_output_files(output_dir)
+
 
 def create_validation_context(validation_instance=None):
 
@@ -150,10 +159,63 @@ def create_validation_context(validation_instance=None):
     return validation_base_path, validation_input_path, validation_output_path
 
 def get_ruleset_version():
-    tree = etree.parse(os.path.join(RULE_SET_DIR, 'config', 'config.xml'))
-    root = tree.getroot()
-    rsl_version = root.find('{http://entsoe.eu/CIM/Extensions/CGM-BP/2020#}rslVersion').text
-    return rsl_version
+    try:
+        tree = etree.parse(os.path.join(RULE_SET_DIR, 'config', 'config.xml'))
+        root = tree.getroot()
+        rsl_version = root.find('{http://entsoe.eu/CIM/Extensions/CGM-BP/2020#}rslVersion').text
+        return rsl_version
+    except:
+        return None
+
+
+def update_rsl(rsl_zip_bytes: BytesIO):
+    """
+    Update the rule-set-library with the contents of the first internal folder of the provided RSL zip file.
+
+    Args:
+        rsl_zip_bytes (BytesIO): In-memory bytes of the RSL zip file.
+    """
+    try:
+        # Ensure the rule-set-library directory exists
+        rule_set_dir = Path(RULE_SET_DIR)
+        if not rule_set_dir.exists():
+            rule_set_dir.mkdir(parents=True, exist_ok=True)
+
+        # Clean the existing rule-set-library directory
+        clean_dir(rule_set_dir)
+
+        # Open the zip file from the BytesIO object
+        with zipfile.ZipFile(rsl_zip_bytes, 'r') as zip_ref:
+            # Get the list of files/folders in the zip
+            zip_contents = zip_ref.namelist()
+
+            # Find the first internal folder (assuming it's the common prefix)
+            if not zip_contents:
+                raise ValueError("Zip file is empty")
+
+            # Determine the root folder (first common prefix)
+            root_folder = os.path.commonprefix(zip_contents)
+            if not root_folder or not root_folder.endswith('/'):
+                raise ValueError("Zip file does not contain a single root folder")
+
+            # Strip the root folder and extract contents
+            for file_info in zip_ref.infolist():
+                # Skip directories and files outside the root folder
+                if file_info.filename.startswith(root_folder) and not file_info.is_dir():
+                    # Remove the root folder prefix from the file path
+                    relative_path = file_info.filename[len(root_folder):]
+                    if relative_path:  # Ensure there's a remaining path after stripping
+                        target_path = rule_set_dir / relative_path
+                        # Ensure the target directory exists
+                        target_path.parent.mkdir(parents=True, exist_ok=True)
+                        # Extract the file to the target path
+                        with zip_ref.open(file_info) as source, open(target_path, 'wb') as target:
+                            shutil.copyfileobj(source, target)
+
+        logger.info("RSL updated successfully from in-memory zip data, stripped root folder")
+    except Exception as e:
+        logger.error(f"Failed to update RSL: {str(e)}")
+        raise
 
 
 if __name__ == "__main__":
