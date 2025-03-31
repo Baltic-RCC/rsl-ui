@@ -20,7 +20,7 @@ def get_or_create_session_id():
         session["session_id"] = str(uuid.uuid4())
     return session["session_id"]
 
-external_stylesheets = [dbc.themes.BOOTSTRAP] #['https://codepen.io/chriddyp/pen/bWLwgP.css']
+external_stylesheets = ["assets/bootstrap.min.css"]#[dbc.themes.BOOTSTRAP] #['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
 server = Flask(__name__)
 server.secret_key = "your-secret-key"  # Required for session
