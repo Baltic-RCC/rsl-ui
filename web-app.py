@@ -306,7 +306,7 @@ def download_file(validation_instance):
     _, _, output_dir = validation_api.create_validation_context(validation_instance)
     result = validation_api.download_validation_results(output_dir)
     if result:
-        return send_file(result, mimetype='application/zip', as_attachment=True, download_name=f"validation_results_{datetime.datetime.now().isoformat():%Y%m%dT%H%M}.zip")
+        return send_file(result, mimetype='application/zip', as_attachment=True, download_name=f"validation_results_{datetime.datetime.now():%Y%m%dT%H%M}.zip")
     return "Validation failed", 500
 
 @server.route('/upload_for_validation', methods=['POST'])
