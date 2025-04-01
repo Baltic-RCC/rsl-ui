@@ -5,6 +5,7 @@ from dash.dependencies import Input, Output, State
 from dash import dcc, html, dash_table, no_update, ctx
 import dash_bootstrap_components as dbc
 from flask import Flask, send_file, session, request, jsonify
+from flasgger import Swagger, swag_from
 
 from io import BytesIO
 import base64
@@ -22,28 +23,30 @@ def get_or_create_session_id():
         session["session_id"] = str(uuid.uuid4())
     return session["session_id"]
 
-external_stylesheets = ["assets/bootstrap.min.css"]#[dbc.themes.BOOTSTRAP] #['https://codepen.io/chriddyp/pen/bWLwgP.css']
-
+# Initialise flask
 server = Flask(__name__)
 server.secret_key = "your-secret-key"  # Required for session
+
+# Initialize dash single page app
+external_stylesheets = ["assets/bootstrap.min.css"]
 app = dash.Dash(__name__, server=server, external_stylesheets=external_stylesheets, title="CGMES Validator")
 
-#app = dash.Dash(__name__)#, external_stylesheets=external_stylesheets)
+# Initialize Flasgger with Swagger UI for API documentation
+swagger = Swagger(server, template={
+    "info": {
+        "title": "CGMES Validator API",
+        "description": "REST API for validating CGMES files and managing validation results",
+        "version": app_version
+    },
+    "basePath": "/"
+})
 
 # Load SVG logo (with fallback if not available)
-try:
-    with open("assets/logo.svg", "r") as f:
-        svg_logo = f.read()
-except FileNotFoundError:
-    # Fallback SVG if logo.svg is not available
-    svg_logo = '''
-    <svg width="40" height="40" xmlns="http://www.w3.org/2000/svg">
-        <rect width="40" height="40" fill="#ffffff"/>
-        <text x="10" y="25" fill="#000000">Logo</text>
-    </svg>
-    '''
+with open("assets/logo.svg", "r") as f:
+    svg_logo = f.read()
 
 # Override the default HTML to set body margin to 0
+# Custom index string with sticky footer
 app.index_string = '''
 <!DOCTYPE html>
 <html>
@@ -52,19 +55,14 @@ app.index_string = '''
         <title>{%title%}</title>
         {%favicon%}
         {%css%}
-        <style>
-            html, body {
-                margin: 0;
-                padding: 0;
-            }
-        </style>
     </head>
     <body>
         {%app_entry%}
-        <footer>
+        <footer class="bg-light text-center py-2 border-top mt-3">
             {%config%}
             {%scripts%}
             {%renderer%}
+            <p><a href="/apidocs" target="_blank">API Documentation</a></p>
         </footer>
     </body>
 </html>
@@ -176,7 +174,6 @@ app.layout = html.Div(
 
                 html.Div(id='uploaded-files'),
                 html.Div(id='folder-content'),
-                html.Div(id='delete-all'),
                 html.Div(id='download-validation-result'),
                 html.Div(id='validation-result',
                          children=None,
@@ -293,6 +290,27 @@ def update_rsl(contents, filename):
     return no_update, f"App: {app_version} RSL: {validation_api.get_ruleset_version()}"
 
 @server.route("/validate/<validation_instance>")
+@swag_from({
+    "tags": ["Validation"],
+    "parameters": [
+        {
+            "name": "validation_instance",
+            "in": "path",
+            "type": "string",
+            "required": True,
+            "description": "Unique validation instance ID (UUID)"
+        }
+    ],
+    "responses": {
+        "200": {
+            "description": "Validation result as plain text",
+            "schema": {"type": "string"}
+        },
+        "500": {
+            "description": "Validation failed"
+        }
+    }
+})
 def validate(validation_instance):
     _, input_dir, output_dir = validation_api.create_validation_context(validation_instance)
     validation_api.clean_dir(Path(output_dir))
@@ -302,6 +320,34 @@ def validate(validation_instance):
     return "Validation failed", 500
 
 @server.route("/download_results/<validation_instance>")
+@swag_from({
+    "tags": ["Validation"],
+    "parameters": [
+        {
+            "name": "validation_instance",
+            "in": "path",
+            "type": "string",
+            "required": True,
+            "description": "Unique validation instance ID (UUID)"
+        }
+    ],
+    "responses": {
+        "200": {
+            "description": "ZIP file containing validation results",
+            "content": {
+                "application/zip": {
+                    "schema": {
+                        "type": "string",
+                        "format": "binary"
+                    }
+                }
+            }
+        },
+        "500": {
+            "description": "Validation failed"
+        }
+    }
+})
 def download_file(validation_instance):
     _, _, output_dir = validation_api.create_validation_context(validation_instance)
     result = validation_api.download_validation_results(output_dir)
@@ -310,6 +356,52 @@ def download_file(validation_instance):
     return "Validation failed", 500
 
 @server.route('/upload_for_validation', methods=['POST'])
+@swag_from({
+    "tags": ["Validation"],
+    "summary": "Upload files for validation",
+    "consumes": ["application/json"],
+    "parameters": [
+        {
+            "name": "body",
+            "in": "body",
+            "required": True,
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "files": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "name": {"type": "string", "description": "Filename"},
+                                "content": {"type": "string", "description": "Base64-encoded file content"}
+                            },
+                            "required": ["name", "content"]
+                        }
+                    }
+                },
+                "required": ["files"]
+            }
+        }
+    ],
+    "responses": {
+        "200": {
+            "description": "Files uploaded successfully",
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "validation_id": {"type": "string", "description": "Unique ID for this validation session"}
+                }
+            }
+        },
+        "400": {
+            "description": "Missing 'files' in request"
+        },
+        "500": {
+            "description": "Failed to process a file"
+        }
+    }
+})
 def upload_files_api():
     data = request.get_json()
     if not data or "files" not in data:
@@ -344,4 +436,4 @@ def upload_files_api():
 
 
 if __name__ == '__main__':
-    app.run(host="0.0.0.0", port=8050, debug=False)
+    app.run(host="0.0.0.0", port=8050, debug=True)
