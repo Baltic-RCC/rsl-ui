@@ -285,10 +285,10 @@ def update_rsl(contents, filename):
             new_version = validation_api.get_ruleset_version()
             return html.Span(f"RSL updated successfully to version {new_version}", style={'color': 'green'}), f"App: {app_version}        RSL: {validation_api.get_ruleset_version()}"
         except Exception as e:
-            return html.Span(f"Failed to update RSL: {str(e)}", style={'color': 'red'}), f"App: {app_version}        RSL: {validation_api.get_ruleset_version()}"
+            return html.Span(f"Failed to update RSL: {str(e)}", style={'color': 'red'}), f"App: {app_version} RSL: {validation_api.get_ruleset_version()}"
     elif contents is not None:
         return html.Span("Please upload a valid .zip file", style={'color': 'red'}), no_update
-    return no_update, no_update
+    return no_update, f"App: {app_version} RSL: {validation_api.get_ruleset_version()}"
 
 @server.route("/validate/<validation_instance>")
 def validate(validation_instance):
