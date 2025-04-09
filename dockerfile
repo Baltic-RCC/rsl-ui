@@ -12,19 +12,25 @@ RUN apt-get update && apt-get install -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
+# Create a non-root user and group
+RUN groupadd -r appuser && useradd -r -g appuser -m -d /home/appuser appuser
+
 # Copy requirements file
 COPY requirements.txt /app/
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy assets
+# Copy assets and app code
 COPY assets /app/assets
-
-# Copy app code
 COPY web-app.py /app/web-app.py
 COPY validation_api.py /app/validation_api.py
 
+# Set ownership of /app to the non-root user
+RUN chown -R appuser:appuser /app
+
+# Switch to the non-root user
+USER appuser
 
 # Set environment variables
 ENV JAVA_HOME=/opt/java/openjdk
