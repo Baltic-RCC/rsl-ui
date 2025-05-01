@@ -1,6 +1,8 @@
 # Validator UI
 UI for ENTSO-E CGMES validation tool
 
+Clone and run/build form this repo or run prebuilt image ```docker pull balticrcc/rsl-ui:main-latest```
+
 ## UI
 ![image](https://github.com/user-attachments/assets/c815f7ea-a564-4949-97a9-c778b4a4a48f)
 
