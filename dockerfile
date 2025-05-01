@@ -1,11 +1,13 @@
-# Use a JDK 17 base image from Eclipse Temurin with full registry path
-FROM docker.io/eclipse-temurin:17-jdk-jammy AS base
+# Use a JAVA base image from Eclipse Temurin with full registry path
+#FROM docker.io/eclipse-temurin:17-jdk-jammy AS base
+FROM docker.io/eclipse-temurin:21-jre-noble AS base
+
 
 # Set working directory
 WORKDIR /app
 
 # Install Python and necessary packages in one layer
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     python3-pip \
     unzip \
@@ -19,7 +21,7 @@ RUN groupadd -r appuser && useradd -r -g appuser -m -d /home/appuser appuser
 COPY requirements.txt /app/
 
 # Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt --break-system-packages
 
 # Copy assets and app code
 COPY assets /app/assets
