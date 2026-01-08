@@ -1,15 +1,70 @@
 # Validator UI
-UI for ENTSO-E CGMES validation tool
 
-Clone and run/build form this repo or run prebuilt image ```docker pull balticrcc/rsl-ui:main-latest```
+UI for ENTSO-E CGMES validation tool. 
 
-## UI
-![image](https://github.com/user-attachments/assets/c815f7ea-a564-4949-97a9-c778b4a4a48f)
+## Key Features
+- **Secure File Handling**: Safe ZIP extraction with "Zip Slip" protection and filename sanitization.
+- **Extreme Resilience**: Production-ready deployment with Gunicorn, high timeouts (20m), and health checks.
+- **Bootstrapping Workflow**: Upload your Rule Set Library (RSL) directly via the UI to configure the validation engine.
+- **OWASP Compliant**: Hardened against XXE, Command Injection, and Path Traversal.
+- **Comprehensive Testing**: Full suite of Unit, Security, and Playwright E2E tests.
 
+## Prerequisites
+- **Java**: Java 17+ (e.g., Eclipse Temurin) must be installed on the host or in the container.
+- **Python**: 3.12+
 
-## UI when files uploaded and validated
-![image](https://github.com/user-attachments/assets/3fc0cd88-3baa-4b84-8695-9b46c1331029)
+## Environment Variables
 
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `FLASK_SECRET_KEY` | **Required for Production.** Secret key for signing session cookies. | `default-insecure...` |
+| `SUV_DIR` | Directory for the Standalone Validation Tool. | `./suv` |
+| `JAVA_HOME` | Path to Java installation. | (System Default) |
 
-## API
-![image](https://github.com/user-attachments/assets/d0a4f4cc-f7bc-4ff0-a2f4-4b1e3b4fcaca)
+## Local Installation
+1. Create a virtual environment and install dependencies:
+   ```bash
+   python -m venv venv
+   source venv/bin/activate
+   pip install -r requirements.txt
+   ```
+2. Run the application:
+   ```bash
+   python web_app.py
+   ```
+   Access at `http://localhost:8050`.
+
+## Docker / Podman Installation
+Build and run the production image:
+```bash
+podman build -t rsl-ui .
+podman run -d -p 8050:8050 --name rsl-ui rsl-ui
+```
+
+## First Time Setup (Bootstrapping)
+1. Open the UI at `http://localhost:8050`.
+2. You will see a **"System Not Ready"** warning.
+3. Open the **"Upload RSL"** section.
+4. Upload your RSL ZIP file (must contain `config/rsl.jar` and `config/qar2xlsx.jar`).
+5. Once uploaded, the system status will turn **Green**, and validation will be enabled.
+
+## Development & Testing
+Install development requirements:
+```bash
+pip install -r requirements-dev.txt
+playwright install chromium
+```
+
+Run the full test suite:
+```bash
+PYTHONPATH=. pytest tests/
+```
+
+Run linting and formatting (Ruff):
+```bash
+ruff check .
+ruff format .
+```
+
+## API Documentation
+The application includes a Swagger UI for REST API interaction, available at `/apidocs`.

@@ -1,0 +1,13 @@
+services:
+  validator-ui:
+    build: .
+    image: balticrcc/rsl-ui:local
+    ports:
+      - "8050:8050"
+    environment:
+      - FLASK_SECRET_KEY=dev-secret-key-change-me
+      # Override paths if needed, e.g. mapping to a volume
+      # - WORKSPACE_DIR=/app/suv/workspace
+    volumes:
+      # Persist workspace if needed
+      - ./suv_workspace:/app/suv/workspace

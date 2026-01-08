@@ -1,46 +1,67 @@
-# Use a JAVA base image from Eclipse Temurin with full registry path
-#FROM docker.io/eclipse-temurin:17-jdk-jammy AS base
-FROM docker.io/eclipse-temurin:21-jre-noble AS base
+# Stage 1: Builder
+FROM docker.io/eclipse-temurin:21-jre-noble AS builder
 
-
-# Set working directory
 WORKDIR /app
 
-# Install Python and necessary packages in one layer
+# Install build dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     python3-pip \
-    unzip \
+    python3-venv \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Create a non-root user and group
-RUN groupadd -r appuser && useradd -r -g appuser -m -d /home/appuser appuser
+# Create virtual environment
+RUN python3 -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
 
-# Copy requirements file
-COPY requirements.txt /app/
+# Install dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt --break-system-packages
+# Stage 2: Final
+FROM docker.io/eclipse-temurin:21-jre-noble
 
-# Copy assets and app code
+WORKDIR /app
+
+# Install runtime dependencies (only python3, minimal)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 \
+    curl \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user with fixed UID/GID to match K8s securityContext
+RUN groupadd -g 3000 appgroup && \
+    useradd -u 1001 -g appgroup -m -d /home/appuser appuser
+
+# Copy virtual environment from builder
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Copy application code
 COPY assets /app/assets
-COPY web-app.py /app/web-app.py
+COPY web_app.py /app/web_app.py
 COPY validation_api.py /app/validation_api.py
 
-# Set ownership of /app to the non-root user
-RUN chown -R appuser:appuser /app
+# Create workspace directory and set ownership
+RUN mkdir -p /app/suv/workspace && \
+    chown -R appuser:appgroup /app
 
-# Switch to the non-root user
-USER appuser
+# Switch user
+USER 1001
 
-# Set environment variables
+# Environment variables
 ENV JAVA_HOME=/opt/java/openjdk
 ENV PATH="${JAVA_HOME}/bin:${PATH}"
 ENV PYTHONUNBUFFERED=1
 
-# Expose the Dash app port
+# Expose port
 EXPOSE 8050
 
-# Run the app
-CMD ["python3", "web-app.py"]
+# Healthcheck
+HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:8050/health || exit 1
+
+# Run with Gunicorn from venv
+CMD ["gunicorn", "--workers=2", "--threads=4", "--timeout=1200", "--bind=0.0.0.0:8050", "web_app:server"]

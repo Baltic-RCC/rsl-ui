@@ -1,4 +1,6 @@
 flask==3.0.3
-dash==3.0.1
-dash-bootstrap-components==2.0.0
-flasgger
+dash==2.18.2
+dash-bootstrap-components==1.6.0
+flasgger==0.9.7.1
+gunicorn==23.0.0
+defusedxml==0.7.1
