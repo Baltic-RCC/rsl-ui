@@ -18,7 +18,7 @@ from dash import ctx
 
 from pathlib import Path
 
-app_version = "0.1.2"
+app_version = "0.1.3"
 
 
 def get_or_create_session_id():

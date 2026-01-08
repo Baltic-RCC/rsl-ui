@@ -176,4 +176,4 @@ debug_console.py
 create_dummy_zip.py
 .ruff_cache/
 test_data/*.zip
-
+.agentic/*
