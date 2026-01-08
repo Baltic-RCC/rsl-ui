@@ -126,13 +126,12 @@ app.layout = html.Div(
                 html.Div(
                     style={"display": "flex", "alignItems": "center"},
                     children=[
-                        dbc.Button(
+                        html.A(
                             "Swagger API",
                             href="/apidocs",
                             target="_blank",
-                            color="outline-light",
-                            size="sm",
-                            className="me-3",
+                            className="btn btn-outline-light btn-sm me-3",
+                            role="button",
                         ),
                         html.Div(
                             id="rsl-version",
