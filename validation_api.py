@@ -174,6 +174,13 @@ def run_validation(
 ):
     validation_log = []
 
+    # Validate validation_gate argument
+    valid_gates = ["full", "full_igm", "full_cgm"]
+    if validation_gate not in valid_gates:
+        error_msg = f"Invalid validation gate: {validation_gate}. Must be one of {valid_gates}"
+        logger.error(error_msg)
+        return [error_msg]
+
     # Resilience: Check if JARs exist
     rsl_jar = os.path.join(rule_set_dir, "config", "rsl.jar")
     if not os.path.exists(rsl_jar):

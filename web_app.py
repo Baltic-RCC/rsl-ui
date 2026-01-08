@@ -122,11 +122,24 @@ app.layout = html.Div(
                         ),
                     ],
                 ),
-                # Right side: RSL Version
+                # Right side: Swagger Button and RSL Version
                 html.Div(
-                    id="rsl-version",
-                    children=f"App: {app_version}        RSL: {validation_api.get_ruleset_version()}",
-                    style={"fontSize": "18px"},
+                    style={"display": "flex", "alignItems": "center"},
+                    children=[
+                        dbc.Button(
+                            "Swagger API",
+                            href="/apidocs",
+                            target="_blank",
+                            color="outline-light",
+                            size="sm",
+                            className="me-3",
+                        ),
+                        html.Div(
+                            id="rsl-version",
+                            children=f"App: {app_version}        RSL: {validation_api.get_ruleset_version()}",
+                            style={"fontSize": "18px"},
+                        ),
+                    ],
                 ),
             ],
         ),
@@ -183,6 +196,24 @@ app.layout = html.Div(
                     className="mb-3",
                 ),
                 # Validation Controls
+                html.Div(
+                    [
+                        html.Label("Validation Gate:", className="me-2"),
+                        dcc.Dropdown(
+                            id="validation-gate-dropdown",
+                            options=[
+                                {"label": "Full", "value": "full"},
+                                {"label": "Full IGM", "value": "full_igm"},
+                                {"label": "Full CGM", "value": "full_cgm"},
+                            ],
+                            value="full",
+                            clearable=False,
+                            style={"width": "200px", "display": "inline-block"},
+                            disabled=True,
+                        ),
+                    ],
+                    className="mb-3 d-flex align-items-center",
+                ),
                 dbc.Button(
                     "Validate",
                     id="btn-validate",
@@ -306,15 +337,18 @@ def manage_files(
     Output("download-validation-result", "children"),
     Output("validation-result", "children"),
     Input("btn-validate", "n_clicks"),
+    State("validation-gate-dropdown", "value"),
 )
-def validate(n_clicks):
+def validate(n_clicks, validation_gate):
     if n_clicks:
         session_id = get_or_create_session_id()
         _, input_dir, output_dir = validation_api.create_validation_context(
             get_or_create_session_id()
         )
         validation_api.clean_dir(Path(output_dir))
-        validation_result = validation_api.run_validation(input_dir, output_dir)
+        validation_result = validation_api.run_validation(
+            input_dir, output_dir, validation_gate=validation_gate
+        )
 
         log_display = [html.Div(line) for line in validation_result]
         download_link = html.A(
@@ -333,6 +367,7 @@ def validate(n_clicks):
     Output("rsl-upload-status", "children"),
     Output("rsl-version", "children"),
     Output("btn-validate", "disabled"),
+    Output("validation-gate-dropdown", "disabled"),
     Output("system-status-alert", "children"),
     Output("system-status-alert", "color"),
     Output("rsl-accordion", "active_item"),
@@ -380,6 +415,7 @@ def update_rsl_and_status(contents, pathname, filename):
         status_text = "System Ready: RSL loaded."
         status_color = "success"
         btn_disabled = False
+        dropdown_disabled = False
         accordion_state = None  # Collapse
     else:
         status_text = (
@@ -387,12 +423,14 @@ def update_rsl_and_status(contents, pathname, filename):
         )
         status_color = "warning"
         btn_disabled = True
+        dropdown_disabled = True
         accordion_state = "item-0"  # Expand the first item (Upload RSL)
 
     return (
         upload_msg,
         version_text,
         btn_disabled,
+        dropdown_disabled,
         status_text,
         status_color,
         accordion_state,
@@ -410,7 +448,16 @@ def update_rsl_and_status(contents, pathname, filename):
                 "type": "string",
                 "required": True,
                 "description": "Unique validation instance ID (UUID)",
-            }
+            },
+            {
+                "name": "validation_gate",
+                "in": "query",
+                "type": "string",
+                "required": False,
+                "default": "full",
+                "enum": ["full", "full_igm", "full_cgm"],
+                "description": "Validation gate to use",
+            },
         ],
         "responses": {
             "200": {
@@ -422,13 +469,16 @@ def update_rsl_and_status(contents, pathname, filename):
     }
 )
 def validate_api_endpoint(validation_instance):
+    validation_gate = request.args.get("validation_gate", "full")
     _, input_dir, output_dir = validation_api.create_validation_context(
         validation_instance
     )
     validation_api.clean_dir(Path(output_dir))
-    result = validation_api.run_validation(input_dir, output_dir)
+    result = validation_api.run_validation(
+        input_dir, output_dir, validation_gate=validation_gate
+    )
     if result:
-        return result
+        return "\n".join(result) if isinstance(result, list) else result
     return "Validation failed", 500
 
 

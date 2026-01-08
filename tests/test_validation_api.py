@@ -81,6 +81,50 @@ def test_run_validation_failure(mock_run_command, mock_fs):
     assert any("Validation failed" in line for line in log)
 
 
+@patch("validation_api.run_command")
+def test_run_validation_valid_gates(mock_run_command, mock_fs):
+    """Test run_validation accepts valid validation gates."""
+    base, inp, out = validation_api.create_validation_context("test-uuid")
+    
+    # Create dummy JARs
+    config_dir = Path(validation_api.RULE_SET_DIR) / "config"
+    config_dir.mkdir(parents=True, exist_ok=True)
+    (config_dir / "rsl.jar").touch()
+    
+    mock_run_command.return_value = ["Success"]
+
+    for gate in ["full", "full_igm", "full_cgm"]:
+        validation_api.run_validation(
+            input_dir=inp, output_dir=out, rule_set_dir=str(validation_api.RULE_SET_DIR),
+            validation_gate=gate
+        )
+        
+        args, _ = mock_run_command.call_args
+        cmd = args[0]
+        assert "-vg" in cmd
+        idx = cmd.index("-vg")
+        assert cmd[idx + 1] == gate
+
+
+@patch("validation_api.run_command")
+def test_run_validation_invalid_gate(mock_run_command, mock_fs):
+    """Test run_validation rejects invalid validation gate."""
+    base, inp, out = validation_api.create_validation_context("test-uuid")
+    
+    # Create dummy JARs
+    config_dir = Path(validation_api.RULE_SET_DIR) / "config"
+    config_dir.mkdir(parents=True, exist_ok=True)
+    (config_dir / "rsl.jar").touch()
+
+    log = validation_api.run_validation(
+        input_dir=inp, output_dir=out, rule_set_dir=str(validation_api.RULE_SET_DIR),
+        validation_gate="invalid_gate"
+    )
+
+    assert any("Invalid validation gate" in line for line in log)
+    assert not mock_run_command.called
+
+
 def test_update_rsl(mock_fs):
     """Test RSL update from zip."""
     # Create a dummy zip file in memory
