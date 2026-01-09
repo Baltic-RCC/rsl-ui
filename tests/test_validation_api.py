@@ -93,7 +93,7 @@ def test_run_validation_valid_gates(mock_run_command, mock_fs):
     
     mock_run_command.return_value = ["Success"]
 
-    for gate in ["full", "full_igm", "full_cgm"]:
+    for gate in ["full", "full_igm", "full_cgm", "bds"]:
         validation_api.run_validation(
             input_dir=inp, output_dir=out, rule_set_dir=str(validation_api.RULE_SET_DIR),
             validation_gate=gate

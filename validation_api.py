@@ -175,7 +175,7 @@ def run_validation(
     validation_log = []
 
     # Validate validation_gate argument
-    valid_gates = ["full", "full_igm", "full_cgm"]
+    valid_gates = ["full", "full_igm", "full_cgm", "bds"]
     if validation_gate not in valid_gates:
         error_msg = f"Invalid validation gate: {validation_gate}. Must be one of {valid_gates}"
         logger.error(error_msg)
