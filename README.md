@@ -75,3 +75,6 @@ ruff format .
 
 ## API Documentation
 The application includes a Swagger UI for REST API interaction, available at `/apidocs`.
+
+## License
+This project is licensed under the Mozilla Public License Version 2.0. See the [LICENSE](LICENSE) file for details.
