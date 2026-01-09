@@ -43,6 +43,9 @@ ENV PATH="/opt/venv/bin:$PATH"
 COPY assets /app/assets
 COPY web_app.py /app/web_app.py
 COPY validation_api.py /app/validation_api.py
+COPY layout.py /app/layout.py
+COPY callbacks.py /app/callbacks.py
+COPY config.py /app/config.py
 
 # Create workspace directory and set ownership
 RUN mkdir -p /app/suv/workspace && \
