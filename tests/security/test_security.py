@@ -20,9 +20,15 @@ def test_path_traversal_validation_context(mock_workspace):
     # malicious_id = "../../etc"
     # Resulting path should NOT be /etc
 
-    malicious_id = "../outside_workspace"
+    malicious_id = "../malicious"
 
-    base, inp, out = validation_api.create_validation_context(malicious_id)
+    # Check if context creation sanitizes the ID or throws error
+    # Note: Depending on implementation, it might create a safe path or fail
+    # The current impl uses uuid if None, but here we pass a string.
+    # It constructs path: WORKSPACE/temp_{id}
+    # Path traversal should be checked.
+
+    base, inp, out = validation_api.prepare_session(malicious_id)
 
     # The base path should start with the mock_workspace path
     # os.path.abspath resolves '..' so we need to check if the common prefix is still the workspace

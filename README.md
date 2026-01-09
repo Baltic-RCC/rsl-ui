@@ -9,6 +9,13 @@ UI for ENTSO-E CGMES validation tool.
 - **OWASP Compliant**: Hardened against XXE, Command Injection, and Path Traversal.
 - **Comprehensive Testing**: Full suite of Unit, Security, and Playwright E2E tests.
 
+## Validation Gates
+The validator supports the following gates:
+- **Full**: Standard validation.
+- **Full IGM**: Validation optimized for Individual Grid Models.
+- **Full CGM**: Validation optimized for Common Grid Models.
+- **BDS**: Basic Data Structure validation.
+
 ## Prerequisites
 - **Java**: Java 17+ (e.g., Eclipse Temurin) must be installed on the host or in the container.
 - **Python**: 3.12+

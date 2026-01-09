@@ -4,57 +4,99 @@ import subprocess
 import logging
 import uuid
 import zipfile
+import json
+import threading
+import base64
 from io import BytesIO
 from pathlib import Path
+from typing import List, Tuple, Optional, Any
+
 import defusedxml.ElementTree as etree
 from werkzeug.utils import secure_filename
+
+from config import Config
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-# Base directory where the Standalone Validation Tool (SVT) is located
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-SUV_DIR = os.environ.get("SUV_DIR", os.path.join(BASE_DIR, "suv"))
-WORKSPACE_DIR = os.environ.get("WORKSPACE_DIR", os.path.join(SUV_DIR, "workspace"))
-RULE_SET_DIR = os.environ.get(
-    "RULE_SET_DIR", os.path.join(WORKSPACE_DIR, "rule-set-library")
-)
+# --- Configuration & Paths ---
+BASE_DIR = Config.BASE_DIR
+SUV_DIR = Config.SUV_DIR
+WORKSPACE_DIR = Config.WORKSPACE_DIR
+RULE_SET_DIR = Config.RULE_SET_DIR
 INPUT_DIR = os.path.join(WORKSPACE_DIR, "in")
 OUTPUT_DIR = os.path.join(WORKSPACE_DIR, "out")
-TEST_DATA_DIR = os.path.join(BASE_DIR, "test_data")  # Directory for test files
+TEST_DATA_DIR = Config.TEST_DATA_DIR
 
 # Java configuration
-JAVA_HOME = os.environ.get("JAVA_HOME")
+JAVA_HOME = Config.JAVA_HOME
 if JAVA_HOME:
     JAVA = os.path.join(JAVA_HOME, "bin", "java")
 else:
-    # Fallback to 'java' in PATH
     JAVA = "java"
 
 
-def delete_path(path):
+# --- Helper Functions ---
+
+
+def delete_path(path: str) -> None:
+    """Deletes a file or directory if it exists."""
     if os.path.exists(path):
         shutil.rmtree(path)
-        print(f"Deleted: {path}")
+        logger.info(f"Deleted: {path}")
     else:
-        print(f"Path does not exist: {path}")
+        logger.warning(f"Path does not exist: {path}")
 
 
-def clean_dir(dir: Path):
-    for item in dir.iterdir():
+def clean_dir(directory: Path, keep_pattern: Optional[str] = None) -> None:
+    """
+    Removes all files and subdirectories inside a directory.
+    If keep_pattern is provided, files/folders with that substring in their name are preserved.
+    """
+    if not directory.exists():
+        return
+    for item in directory.iterdir():
+        if keep_pattern and keep_pattern in item.name:
+            continue
+
         if item.is_file() or item.is_symlink():
             item.unlink()
         elif item.is_dir():
             shutil.rmtree(item)
 
 
-def process_upload(filename, file_bytes, target_dir):
+def get_status_file_path(session_id: str) -> str:
+    """Returns the absolute path to the status file for a given session."""
+    return os.path.join(WORKSPACE_DIR, f"temp_{session_id}", "status.json")
+
+
+def prepare_session(session_id: str) -> Tuple[str, str, str]:
+    """
+    Creates the workspace directories for a session if they don't exist.
+    Returns: (base_dir, input_dir, output_dir)
+    """
+    if not session_id:
+        session_id = str(uuid.uuid4())
+
+    validation_base_path = os.path.join(WORKSPACE_DIR, f"temp_{session_id}")
+    validation_input_path = os.path.join(validation_base_path, "in")
+    validation_output_path = os.path.join(validation_base_path, "out")
+
+    required_dirs = [validation_input_path, validation_output_path]
+    for dir_path in required_dirs:
+        if not os.path.exists(dir_path):
+            os.makedirs(dir_path, exist_ok=True)
+
+    return validation_base_path, validation_input_path, validation_output_path
+
+
+def process_upload(filename: str, file_bytes: bytes, target_dir: str) -> bool:
     """
     Process an uploaded file. If it's a zip file, extract its contents (flattened).
     Otherwise, write the file directly.
-    Securely handles filenames to prevent path traversal.
+    Securely handles filenames to prevent path traversal and ZIP bombs.
     """
     target_path = Path(target_dir)
 
@@ -62,39 +104,56 @@ def process_upload(filename, file_bytes, target_dir):
         try:
             with zipfile.ZipFile(BytesIO(file_bytes)) as zf:
                 for member in zf.infolist():
-                    # Skip directories
                     if member.is_dir():
                         continue
 
-                    # Flatten structure: use only the basename of the file in the zip
-                    # This also handles Zip Slip by ignoring the directory path in the zip
-                    safe_name = secure_filename(os.path.basename(member.filename))
+                    # Security: Protect against Zip Bombs (uncompressed size check)
+                    if member.file_size > Config.MAX_CONTENT_LENGTH:
+                        error_msg = f"Security Alert: File {member.filename} in ZIP exceeds allowed size limit."
+                        logger.error(error_msg)
+                        raise ValueError(error_msg)
 
-                    # Skip files that become empty strings after sanitization (e.g. dotfiles if secure_filename removes them)
+                    safe_name = secure_filename(os.path.basename(member.filename))
                     if not safe_name:
                         continue
 
                     output_path = target_path / safe_name
-
                     with zf.open(member) as source, open(output_path, "wb") as target:
                         shutil.copyfileobj(source, target)
             return True
         except zipfile.BadZipFile:
             logger.error(f"Invalid zip file: {filename}")
-            # Fallback or raise? For now, if bad zip, maybe treat as file or just fail.
-            # We'll treat it as a regular file if zip extraction fails?
-            # No, if it ends in .zip but is bad, better to raise or log.
             raise ValueError("Invalid zip file")
+        except Exception as e:
+            logger.error(f"Error processing zip upload: {e}")
+            raise
     else:
-        # Regular file
         safe_name = secure_filename(filename)
         output_path = target_path / safe_name
-        with open(output_path, "wb") as f:
-            f.write(file_bytes)
+        try:
+            with open(output_path, "wb") as f:
+                f.write(file_bytes)
+        except OSError as e:
+            logger.error(f"Error writing file {safe_name}: {e}")
+            raise
     return True
 
 
-def zip_output_files(output_dir=OUTPUT_DIR):
+def save_base64_upload(filename: str, base64_content: str, target_dir: str) -> bool:
+    """Decodes a base64 string and processes it as an uploaded file."""
+    try:
+        # Handle cases where base64 string might have a header (e.g. data:text/xml;base64,...)
+        if "," in base64_content:
+            base64_content = base64_content.split(",")[1]
+
+        decoded = base64.b64decode(base64_content)
+        return process_upload(filename, decoded, target_dir)
+    except Exception as e:
+        logger.error(f"Failed to save base64 upload {filename}: {e}")
+        raise
+
+
+def zip_output_files(output_dir: str = OUTPUT_DIR) -> BytesIO:
     """Zip all files in the output directory and return as a BytesIO object."""
     zip_buffer = BytesIO()
     with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
@@ -107,16 +166,39 @@ def zip_output_files(output_dir=OUTPUT_DIR):
     return zip_buffer
 
 
-def run_command(command, capture_output=True, timeout=1200):
+def download_validation_results(output_dir: str = OUTPUT_DIR) -> BytesIO:
+    """Alias for zip_output_files for API compatibility."""
+    return zip_output_files(output_dir)
+
+
+def reset_workspace(
+    input_dir: str, output_dir: str, keep_pattern: Optional[str] = None
+) -> None:
     """
-    Run a command from the /suv directory, optionally capturing output.
-    Includes timeout and resilience against hanging processes.
-    Timeout defaults to 20 minutes.
+    Cleans the workspace directories.
+
+    Args:
+        input_dir: Path to the input directory.
+        output_dir: Path to the output directory.
+        keep_pattern: If provided, files in the input directory matching this pattern are preserved.
+                      If None, all files in the input directory are deleted.
+                      The output directory is always fully cleaned.
+    """
+    clean_dir(Path(output_dir))
+    clean_dir(Path(input_dir), keep_pattern=keep_pattern)
+
+
+def run_command(
+    command: List[str],
+    capture_output: bool = True,
+    timeout: int = Config.VALIDATION_TIMEOUT,
+) -> List[str]:
+    """
+    Run a command from the /suv directory.
     """
     validation_log = []
-
-    # Verify executable exists
     executable = command[0]
+
     if not shutil.which(executable) and not os.path.exists(executable):
         error_msg = f"Executable not found: {executable}"
         logger.error(error_msg)
@@ -124,7 +206,6 @@ def run_command(command, capture_output=True, timeout=1200):
 
     try:
         if capture_output:
-            # reading logic switching to subprocess.run for safety
             logger.info(f"Executing command safely: {' '.join(command)}")
             result = subprocess.run(
                 command,
@@ -132,10 +213,8 @@ def run_command(command, capture_output=True, timeout=1200):
                 text=True,
                 cwd=SUV_DIR,
                 timeout=timeout,
-                check=False,  # We handle return code manually
+                check=False,
             )
-
-            # Split lines for the log
             validation_log.extend(result.stdout.splitlines())
             if result.stderr:
                 validation_log.extend(result.stderr.splitlines())
@@ -147,7 +226,6 @@ def run_command(command, capture_output=True, timeout=1200):
                     output=result.stdout,
                     stderr=result.stderr,
                 )
-
         else:
             subprocess.run(command, cwd=SUV_DIR, timeout=timeout, check=True)
 
@@ -155,9 +233,7 @@ def run_command(command, capture_output=True, timeout=1200):
         error_msg = f"Command timed out after {timeout} seconds: {' '.join(command)}"
         logger.error(error_msg)
         validation_log.append(error_msg)
-        # Process is killed by subprocess.run automatically on timeout
         raise
-
     except Exception as e:
         logger.error(f"Command execution error: {str(e)}")
         validation_log.append(f"Error: {str(e)}")
@@ -166,53 +242,132 @@ def run_command(command, capture_output=True, timeout=1200):
     return validation_log
 
 
-def run_validation(
-    input_dir=INPUT_DIR,
-    output_dir=OUTPUT_DIR,
-    validation_gate="full",
-    rule_set_dir=RULE_SET_DIR,
-):
-    validation_log = []
+def update_status(
+    status_file: Optional[str],
+    state: str,
+    progress: int,
+    message: str,
+    result: Optional[Any] = None,
+) -> None:
+    """Updates the status JSON file with the current progress/state."""
+    if not status_file:
+        return
+    try:
+        data = {
+            "state": state,
+            "progress": progress,
+            "message": message,
+            "result": result,
+        }
+        with open(status_file, "w") as f:
+            json.dump(data, f)
+    except OSError as e:
+        logger.error(f"Failed to update status file {status_file}: {e}")
+    except Exception as e:
+        logger.error(f"Unexpected error updating status: {e}")
 
-    # Validate validation_gate argument
-    valid_gates = ["full", "full_igm", "full_cgm", "bds"]
-    if validation_gate not in valid_gates:
-        error_msg = f"Invalid validation gate: {validation_gate}. Must be one of {valid_gates}"
-        logger.error(error_msg)
-        return [error_msg]
 
-    # Resilience: Check if JARs exist
+def run_validation_background(
+    input_dir: str,
+    output_dir: str,
+    validation_gate: str,
+    rule_set_dir: str,
+    status_file: str,
+) -> None:
+    """Executes run_validation in a background thread and updates the status file."""
+
+    def task():
+        try:
+            result = run_validation(
+                input_dir,
+                output_dir,
+                validation_gate=validation_gate,
+                rule_set_dir=rule_set_dir,
+                status_file=status_file,
+            )
+            update_status(status_file, "completed", 100, "Validation complete", result)
+        except Exception as e:
+            logger.error(f"Background validation failed: {e}")
+            update_status(
+                status_file, "error", 100, f"Validation error: {str(e)}", [str(e)]
+            )
+
+    thread = threading.Thread(target=task)
+    thread.daemon = True
+    thread.start()
+
+
+def _build_validation_command(
+    input_dir: str, output_dir: str, validation_gate: str, rule_set_dir: str
+) -> List[str]:
+    """Constructs the command list for the validation tool."""
     rsl_jar = os.path.join(rule_set_dir, "config", "rsl.jar")
-    if not os.path.exists(rsl_jar):
-        msg = f"CRITICAL: Validation JAR not found at {rsl_jar}. Please upload RSL."
-        logger.error(msg)
-        return [msg]
-
-    validation_cmd = [
+    return [
         JAVA,
         "-jar",
         rsl_jar,
         "-i",
-        f'"{input_dir}"',
+        input_dir,
         "-o",
-        f'"{output_dir}"',
+        output_dir,
         "-vg",
         validation_gate,
         "-c",
         os.path.join(rule_set_dir, "config"),
     ]
 
-    # Construct the report generation command
+
+def _build_report_command(output_dir: str, rule_set_dir: str) -> Optional[List[str]]:
+    """Constructs the command list for the report generation tool if it exists."""
     qar_jar = os.path.join(rule_set_dir, "config", "qar2xlsx.jar")
-    # Check if report JAR exists
-    report_cmd = None
     if os.path.exists(qar_jar):
-        report_cmd = [JAVA, "-jar", qar_jar, f"{output_dir}"]
-    else:
-        logger.warning(f"Report generation JAR not found at {qar_jar}")
+        return [JAVA, "-jar", qar_jar, output_dir]
+    return None
+
+
+def run_validation(
+    input_dir: str = INPUT_DIR,
+    output_dir: str = OUTPUT_DIR,
+    validation_gate: str = "full",
+    rule_set_dir: Optional[str] = None,
+    status_file: Optional[str] = None,
+) -> List[str]:
+    """
+    Runs the Java validation tool and generates an Excel report.
+    Returns: A list of log strings.
+    """
+    validation_log: List[str] = []
+
+    if rule_set_dir is None:
+        rule_set_dir = RULE_SET_DIR
+
+    valid_gates = ["full", "full_igm", "full_cgm", "bds"]
+    if validation_gate not in valid_gates:
+        error_msg = (
+            f"Invalid validation gate: {validation_gate}. Must be one of {valid_gates}"
+        )
+        logger.error(error_msg)
+        update_status(status_file, "error", 0, error_msg)
+        return [error_msg]
+
+    update_status(status_file, "running", 5, "Initializing validation...")
+
+    # Resilience: Check if JARs exist
+    rsl_jar = os.path.join(rule_set_dir, "config", "rsl.jar")
+    if not os.path.exists(rsl_jar):
+        msg = f"CRITICAL: Validation JAR not found at {rsl_jar}. Please upload RSL."
+        logger.error(msg)
+        update_status(status_file, "error", 0, msg)
+        return [msg]
+
+    validation_cmd = _build_validation_command(
+        input_dir, output_dir, validation_gate, rule_set_dir
+    )
+    report_cmd = _build_report_command(output_dir, rule_set_dir)
 
     try:
         logger.info(f"Running validation with command: {' '.join(validation_cmd)}")
+        update_status(status_file, "running", 10, "Running Validation Tool...")
         validation_log.extend(run_command(validation_cmd, capture_output=True))
     except subprocess.CalledProcessError as e:
         error_text = f"Validation failed with return code {e.returncode}"
@@ -220,7 +375,6 @@ def run_validation(
         if e.stderr:
             logger.error(f"Stderr: {e.stderr}")
         validation_log.append(error_text)
-        # Even if validation fails, we might want to try reporting or just return logs
         return validation_log
     except subprocess.TimeoutExpired:
         validation_log.append("Validation timed out.")
@@ -232,6 +386,7 @@ def run_validation(
     if report_cmd:
         try:
             logger.info(f"Generating report with command: {' '.join(report_cmd)}")
+            update_status(status_file, "running", 50, "Generating Report...")
             validation_log.extend(run_command(report_cmd, capture_output=True))
         except subprocess.CalledProcessError as e:
             error_text = [
@@ -243,33 +398,12 @@ def run_validation(
         except Exception as e:
             validation_log.append(f"Error generating report: {str(e)}")
 
+    update_status(status_file, "running", 90, "Finalizing...")
     return validation_log
 
 
-def download_validation_results(output_dir=OUTPUT_DIR):
-    return zip_output_files(output_dir)
-
-
-def create_validation_context(validation_instance=None):
-    if not validation_instance:
-        validation_instance = str(uuid.uuid4())
-
-    validation_base_path = os.path.join(WORKSPACE_DIR, f"temp_{validation_instance}")
-    validation_input_path = os.path.join(validation_base_path, "in")
-    validation_output_path = os.path.join(validation_base_path, "out")
-
-    required_dirs = [validation_input_path, validation_output_path]
-    for dir_path in required_dirs:
-        if not os.path.exists(dir_path):
-            logger.warning(
-                f"Required SUV directory not found: {dir_path}, creating it for test"
-            )
-            os.makedirs(dir_path, exist_ok=True)
-
-    return validation_base_path, validation_input_path, validation_output_path
-
-
-def get_ruleset_version():
+def get_ruleset_version() -> Optional[str]:
+    """Parses the RSL config.xml to get the version string."""
     try:
         tree = etree.parse(os.path.join(RULE_SET_DIR, "config", "config.xml"))
         root = tree.getroot()
@@ -281,59 +415,58 @@ def get_ruleset_version():
         return None
 
 
-def is_configured():
+def is_configured() -> bool:
     """Check if the RSL JAR exists and the system is ready for validation."""
     rsl_jar = os.path.join(RULE_SET_DIR, "config", "rsl.jar")
     return os.path.exists(rsl_jar)
 
 
-def update_rsl(rsl_zip_bytes: BytesIO):
+def update_rsl_from_base64(base64_content: str) -> None:
+    """Decodes a base64 string and updates the RSL."""
+    if "," in base64_content:
+        base64_content = base64_content.split(",")[1]
+    decoded = base64.b64decode(base64_content)
+    update_rsl(BytesIO(decoded))
+
+
+def update_rsl(rsl_zip_bytes: BytesIO) -> None:
     """
     Update the rule-set-library with the contents of the first internal folder of the provided RSL zip file.
-
-    Args:
-        rsl_zip_bytes (BytesIO): In-memory bytes of the RSL zip file.
+    Securely handles ZIP extraction and checks for uncompressed size limits.
     """
     try:
-        # Ensure the rule-set-library directory exists
         rule_set_dir = Path(RULE_SET_DIR)
         if not rule_set_dir.exists():
             rule_set_dir.mkdir(parents=True, exist_ok=True)
 
-        # Clean the existing rule-set-library directory
         clean_dir(rule_set_dir)
 
-        # Open the zip file from the BytesIO object
         with zipfile.ZipFile(rsl_zip_bytes, "r") as zip_ref:
-            # Get the list of files/folders in the zip
             zip_contents = zip_ref.namelist()
-
-            # Find the first internal folder (assuming it's the common prefix)
             if not zip_contents:
                 raise ValueError("Zip file is empty")
 
-            # Determine the root folder (first common prefix)
-            # Use top-level directory check
             top_level_items = {item.split("/")[0] for item in zip_contents}
             if len(top_level_items) != 1:
                 raise ValueError("Zip file does not contain a single root folder")
 
             root_folder = list(top_level_items)[0] + "/"
 
-            # Strip the root folder and extract contents
             for file_info in zip_ref.infolist():
-                # Skip directories and files outside the root folder
                 if (
                     file_info.filename.startswith(root_folder)
                     and not file_info.is_dir()
                 ):
-                    # Remove the root folder prefix from the file path
+                    # Security: Protect against Zip Bombs
+                    if file_info.file_size > Config.MAX_CONTENT_LENGTH:
+                        error_msg = f"Security Alert: File {file_info.filename} in RSL ZIP exceeds allowed size limit."
+                        logger.error(error_msg)
+                        raise ValueError(error_msg)
+
                     relative_path = file_info.filename[len(root_folder) :]
-                    if relative_path:  # Ensure there's a remaining path after stripping
+                    if relative_path:
                         target_path = rule_set_dir / relative_path
-                        # Ensure the target directory exists
                         target_path.parent.mkdir(parents=True, exist_ok=True)
-                        # Extract the file to the target path
                         with (
                             zip_ref.open(file_info) as source,
                             open(target_path, "wb") as target,
@@ -353,31 +486,19 @@ if __name__ == "__main__":
         logger.warning(f"No files found in {TEST_DATA_DIR}, skipping test")
     else:
         try:
-            validation_base_path, validation_input_path, validation_output_path = (
-                create_validation_context()
-            )
+            base_p, input_p, output_p = prepare_session("test_session")
 
-            logger.info(
-                f"Copying files from {TEST_DATA_DIR} to {validation_input_path}"
-            )
+            logger.info(f"Copying files from {TEST_DATA_DIR} to {input_p}")
             for filename in os.listdir(TEST_DATA_DIR):
                 src_path = os.path.join(TEST_DATA_DIR, filename)
-                dst_path = os.path.join(validation_input_path, filename)
+                dst_path = os.path.join(input_p, filename)
                 if os.path.isfile(src_path):
                     shutil.copy2(src_path, dst_path)
 
-            result = run_validation(
-                input_dir=validation_input_path, output_dir=validation_output_path
-            )
+            result = run_validation(input_dir=input_p, output_dir=output_p)
             if result:
-                logger.info(f"Validation successful, report generated at: {result}")
+                logger.info(f"Validation successful: {result}")
             else:
-                logger.error("Validation failed or no report generated")
-
+                logger.error("Validation failed")
         except Exception as e:
             logger.error(f"Test failed: {e}")
-
-        finally:
-            logger.info(
-                f"Test completed, input and output remain at {validation_input_path} and {validation_output_path}"
-            )

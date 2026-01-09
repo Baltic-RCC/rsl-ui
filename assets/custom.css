@@ -1,0 +1,91 @@
+.app-container {
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+    box-sizing: border-box;
+}
+
+.app-header {
+    background-color: #000000;
+    padding: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: #ffffff;
+    margin: 0;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+}
+
+.app-logo {
+    height: 40px;
+    margin-right: 10px;
+}
+
+.app-title {
+    font-size: 24px;
+    margin: 0;
+}
+
+.main-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.upload-box {
+    width: 100%;
+    height: 60px;
+    line-height: 60px;
+    border-width: 1px;
+    border-style: dashed;
+    border-radius: 5px;
+    text-align: center;
+    margin: 10px 0;
+    box-sizing: border-box;
+}
+
+.validation-results {
+    max-height: 700px;
+    overflow-y: auto;
+    background-color: #f8f9fa;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    margin-top: 20px;
+    font-family: monospace;
+    font-size: 14px;
+}
+
+.rsl-version {
+    font-size: 18px;
+}
+
+.validation-gate-container {
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+}
+
+.validation-gate-dropdown {
+    width: 200px;
+    display: inline-block;
+}
+
+.progress-bar-container {
+    margin-bottom: 1rem;
+    margin-top: 1rem;
+    height: 20px;
+    display: none;
+}
