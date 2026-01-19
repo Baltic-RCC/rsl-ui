@@ -44,8 +44,8 @@ The validator supports the following gates:
 ## Docker / Podman Installation
 Build and run the production image:
 ```bash
-podman build -t rsl-ui .
-podman run -d -p 8050:8050 --name rsl-ui rsl-ui
+podman build -t rsl-ui:0.1.6 .
+podman run -d -p 8050:8050 --name rsl-ui rsl-ui:0.1.6
 ```
 
 ## First Time Setup (Bootstrapping)
