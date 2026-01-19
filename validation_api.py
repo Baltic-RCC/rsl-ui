@@ -104,7 +104,7 @@ def process_upload(filename: str, file_bytes: bytes, target_dir: str) -> bool:
     """
     target_path = Path(target_dir)
 
-    if filename.endswith(".zip"):
+    if filename.lower().endswith(".zip"):
         try:
             with zipfile.ZipFile(BytesIO(file_bytes)) as zf:
                 for member in zf.infolist():

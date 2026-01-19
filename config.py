@@ -6,7 +6,7 @@ import os
 
 
 class Config:
-    APP_VERSION = "0.1.3"
+    APP_VERSION = "0.1.6"
     FLASK_SECRET_KEY = os.environ.get(
         "FLASK_SECRET_KEY", "default-insecure-secret-key-change-me"
     )

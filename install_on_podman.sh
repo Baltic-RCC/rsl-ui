@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Build the image with Podman using docker format to support HEALTHCHECK
-podman build --format docker -t rsl-ui-registry-placeholder:443/rcc/rsl-ui:0.1.3 .
+podman build --format docker -t rsl-ui:0.1.6 .
 
 # Stop any existing container
 podman stop validator-ui || true
@@ -10,7 +10,7 @@ podman stop validator-ui || true
 podman rm validator-ui || true
 
 # Run the container in detached mode
-podman run -d -p 8050:8050 --name validator-ui rsl-ui-registry-placeholder:443/rcc/rsl-ui:0.1.3
+podman run -d -p 8050:8050 --name validator-ui rsl-ui:0.1.6
 
 # Check running containers
 podman ps

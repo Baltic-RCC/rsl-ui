@@ -86,3 +86,34 @@ def test_process_upload_invalid_zip(mock_fs):
 
     with pytest.raises(ValueError, match="Invalid zip file"):
         validation_api.process_upload("bad.zip", b"not a zip", target_dir)
+
+
+def test_process_upload_nested_zip(mock_fs):
+    """Test recursive extraction of nested zip files."""
+    target_dir = mock_fs / "in"
+    target_dir.mkdir(parents=True)
+
+    # Inner Zip
+    inner_zip_buffer = BytesIO()
+    with zipfile.ZipFile(inner_zip_buffer, "w") as zf:
+        zf.writestr("inner.xml", b"inner content")
+    inner_bytes = inner_zip_buffer.getvalue()
+
+    # Outer Zip
+    outer_zip_buffer = BytesIO()
+    with zipfile.ZipFile(outer_zip_buffer, "w") as zf:
+        zf.writestr("outer.xml", b"outer content")
+        zf.writestr("nested.zip", inner_bytes)
+    outer_bytes = outer_zip_buffer.getvalue()
+
+    validation_api.process_upload("outer.zip", outer_bytes, target_dir)
+
+    # Check existence: Outer XML should be extracted, but nested.zip should be preserved
+    assert (target_dir / "outer.xml").exists()
+    
+    # The nested zip should remain as a file
+    assert (target_dir / "nested.zip").exists()
+    assert (target_dir / "nested.zip").read_bytes() == inner_bytes
+
+    # The content of the nested zip should NOT be extracted
+    assert not (target_dir / "inner.xml").exists()
