@@ -43,13 +43,13 @@ def test_process_large_zip_file(mock_fs_large):
     # into RAM. This test confirms that at least for 50MB it works.
     validation_api.process_upload("large.zip", zip_buffer.read(), target_dir)
 
-    extracted_file = target_dir / "large_model.xml"
-    assert extracted_file.exists()
-    assert extracted_file.stat().st_size == len(large_data)
+    # Should be preserved as large.zip
+    preserved_file = target_dir / "large.zip"
+    assert preserved_file.exists()
 
 
 def test_process_many_files_in_zip(mock_fs_large):
-    """Test processing a zip with many small files (stress test extraction)."""
+    """Test processing a zip with many small files (stress test extraction/preservation)."""
     target_dir = mock_fs_large / "in"
     target_dir.mkdir(parents=True)
 
@@ -62,10 +62,13 @@ def test_process_many_files_in_zip(mock_fs_large):
 
     validation_api.process_upload("many.zip", zip_buffer.read(), target_dir)
 
-    # Check if all 100 files are extracted and flattened
+    # Check that it is preserved as many.zip
+    assert (target_dir / "many.zip").exists()
+
+    # Check that NO files were extracted
     count = 0
     for item in target_dir.iterdir():
         if item.name.startswith("model_") and item.suffix == ".xml":
             count += 1
 
-    assert count == 100
+    assert count == 0

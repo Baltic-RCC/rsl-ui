@@ -47,16 +47,9 @@ def test_process_upload_zip_extraction(mock_fs):
 
     validation_api.process_upload("models.zip", zip_buffer.read(), target_dir)
 
-    # Check if extracted and flattened
-    assert (target_dir / "model1.xml").exists()
-    assert (target_dir / "model1.xml").read_bytes() == b"content1"
-
-    # Check flattening (subfolder/model2.xml -> model2.xml)
-    assert (target_dir / "model2.xml").exists()
-    assert (target_dir / "model2.xml").read_bytes() == b"content2"
-
-    # Ensure no subfolder created
-    assert not (target_dir / "subfolder").exists()
+    # Check that it is NOT extracted (single zip preserved)
+    assert (target_dir / "models.zip").exists()
+    assert not (target_dir / "model1.xml").exists()
 
 
 def test_process_upload_zip_slip_protection(mock_fs):
@@ -72,10 +65,43 @@ def test_process_upload_zip_slip_protection(mock_fs):
 
     validation_api.process_upload("attack.zip", zip_buffer.read(), target_dir)
 
-    # Should be flattened to "evil.txt" in target_dir
-    assert (target_dir / "evil.txt").exists()
+    # Should be preserved as attack.zip, not extracted
+    assert (target_dir / "attack.zip").exists()
+    assert not (target_dir / "evil.txt").exists()
 
     # Should NOT be outside
+    assert not (mock_fs / "evil.txt").exists()
+
+
+def test_process_upload_batch_zip_slip_protection(mock_fs):
+    """Test that Zip Slip attempts in a batch file are thwarted during extraction."""
+    target_dir = mock_fs / "in"
+    target_dir.mkdir(parents=True)
+
+    # Inner Zip (harmless)
+    inner_zip_buffer = BytesIO()
+    with zipfile.ZipFile(inner_zip_buffer, "w") as zf:
+        zf.writestr("inner.xml", b"inner content")
+    inner_bytes = inner_zip_buffer.getvalue()
+
+    # Outer Batch Zip containing a Malicious Path
+    # The malicious path points to a file, not a zip, but since there IS a zip in the batch,
+    # the batch logic will trigger and iterate over ALL members.
+    batch_zip_buffer = BytesIO()
+    with zipfile.ZipFile(batch_zip_buffer, "w") as zf:
+        zf.writestr("valid_model.zip", inner_bytes) # Triggers batch mode
+        zf.writestr("../../evil.txt", b"evil content")
+    batch_bytes = batch_zip_buffer.getvalue()
+
+    validation_api.process_upload("batch_attack.zip", batch_bytes, target_dir)
+
+    # valid_model.zip should be extracted
+    assert (target_dir / "valid_model.zip").exists()
+
+    # evil.txt should be flattened to target_dir
+    assert (target_dir / "evil.txt").exists()
+
+    # evil.txt should NOT be outside target_dir
     assert not (mock_fs / "evil.txt").exists()
 
 
@@ -117,3 +143,24 @@ def test_process_upload_nested_zip(mock_fs):
 
     # The content of the nested zip should NOT be extracted
     assert not (target_dir / "inner.xml").exists()
+
+
+def test_process_upload_single_model_zip(mock_fs):
+    """Test that a single model zip (containing only xmls) is NOT extracted."""
+    target_dir = mock_fs / "in"
+    target_dir.mkdir(parents=True)
+
+    # Create a single model zip
+    model_zip_buffer = BytesIO()
+    with zipfile.ZipFile(model_zip_buffer, "w") as zf:
+        zf.writestr("model.xml", b"model content")
+    model_bytes = model_zip_buffer.getvalue()
+
+    validation_api.process_upload("model.zip", model_bytes, target_dir)
+
+    # The zip file itself should be preserved
+    assert (target_dir / "model.zip").exists()
+    assert (target_dir / "model.zip").read_bytes() == model_bytes
+
+    # The content should NOT be extracted
+    assert not (target_dir / "model.xml").exists()

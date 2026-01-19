@@ -106,25 +106,45 @@ def process_upload(filename: str, file_bytes: bytes, target_dir: str) -> bool:
 
     if filename.lower().endswith(".zip"):
         try:
+            # Check if it's a batch file (contains other zips)
+            is_batch = False
             with zipfile.ZipFile(BytesIO(file_bytes)) as zf:
-                for member in zf.infolist():
-                    if member.is_dir():
-                        continue
+                for name in zf.namelist():
+                    if name.lower().endswith('.zip'):
+                        is_batch = True
+                        break
 
-                    # Security: Protect against Zip Bombs (uncompressed size check)
-                    if member.file_size > Config.MAX_CONTENT_LENGTH:
-                        error_msg = f"Security Alert: File {member.filename} in ZIP exceeds allowed size limit."
-                        logger.error(error_msg)
-                        raise ValueError(error_msg)
+            if is_batch:
+                with zipfile.ZipFile(BytesIO(file_bytes)) as zf:
+                    for member in zf.infolist():
+                        if member.is_dir():
+                            continue
 
-                    safe_name = secure_filename(os.path.basename(member.filename))
-                    if not safe_name:
-                        continue
+                        # Security: Protect against Zip Bombs (uncompressed size check)
+                        if member.file_size > Config.MAX_CONTENT_LENGTH:
+                            error_msg = f"Security Alert: File {member.filename} in ZIP exceeds allowed size limit."
+                            logger.error(error_msg)
+                            raise ValueError(error_msg)
 
-                    output_path = target_path / safe_name
-                    with zf.open(member) as source, open(output_path, "wb") as target:
-                        shutil.copyfileobj(source, target)
-            return True
+                        safe_name = secure_filename(os.path.basename(member.filename))
+                        if not safe_name:
+                            continue
+
+                        output_path = target_path / safe_name
+                        with zf.open(member) as source, open(output_path, "wb") as target:
+                            shutil.copyfileobj(source, target)
+                return True
+            else:
+                # Save the zip file as is
+                safe_name = secure_filename(filename)
+                output_path = target_path / safe_name
+                try:
+                    with open(output_path, "wb") as f:
+                        f.write(file_bytes)
+                except OSError as e:
+                    logger.error(f"Error writing file {safe_name}: {e}")
+                    raise
+                return True
         except zipfile.BadZipFile:
             logger.error(f"Invalid zip file: {filename}")
             raise ValueError("Invalid zip file")

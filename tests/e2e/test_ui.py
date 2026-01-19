@@ -138,13 +138,11 @@ def test_upload_zip_extraction(page: Page, tmp_path):
 
     # Verify both files appear in the list (flattened)
     folder_content = page.locator("#folder-content")
-    expect(folder_content).to_contain_text("model1.xml")
-    expect(folder_content).to_contain_text("model2.xml")
+    expect(folder_content).to_contain_text("models.zip")
 
     # Strict check:
     content_text = folder_content.inner_text()
-    assert "model1.xml" in content_text
-    assert "model2.xml" in content_text
+    assert "models.zip" in content_text
 
 
 def test_upload_mixed_files(page: Page, tmp_path):
@@ -166,7 +164,7 @@ def test_upload_mixed_files(page: Page, tmp_path):
     # Verify all files are listed
     folder_content = page.locator("#folder-content")
     expect(folder_content).to_contain_text("extra.xml")
-    expect(folder_content).to_contain_text("inside_zip.xml")
+    expect(folder_content).to_contain_text("archive.zip")
 
 
 def test_bootstrap_and_validate(page: Page, tmp_path):
