@@ -1,0 +1,62 @@
+name: Update dependency licenses
+
+on:
+  push:
+    paths:
+      - "requirements.txt"
+      - ".github/workflows/update-dependency-licenses.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-licenses:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+          python -m pip install pip-licenses
+
+      - name: Generate license files
+        env:
+          PYTHONIOENCODING: utf-8
+        run: |
+          mkdir -p licenses
+
+          pip-licenses \
+            --format=markdown \
+            --with-urls \
+            --with-authors \
+            > DEPENDENCY_LICENSES.md
+
+          pip-licenses \
+            --with-license-file \
+            --no-license-path \
+            --format=plain \
+            --output-file licenses/THIRD_PARTY_LICENSES.txt
+
+      - name: Commit updated license files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add DEPENDENCY_LICENSES.md licenses/THIRD_PARTY_LICENSES.txt
+
+          if git diff --cached --quiet; then
+            echo "No license changes to commit."
+          else
+            git commit -m "Update dependency license files"
+            git push
+          fi
