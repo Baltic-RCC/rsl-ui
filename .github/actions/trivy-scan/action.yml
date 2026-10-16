@@ -1,0 +1,43 @@
+name: Trivy image scan
+description: Scan a local image with Trivy, print a table to the log and upload SARIF to the Security tab. Report only.
+
+inputs:
+  image-ref:
+    description: Image to scan, must already be loaded in the local Docker
+    required: true
+  category:
+    description: SARIF category, one per image so results don't overwrite each other
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Run Trivy vulnerability scanner for table
+      uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+      continue-on-error: true
+      with:
+        image-ref: ${{ inputs.image-ref }}
+        vuln-type: 'os,library'
+        format: 'table'
+        severity: 'CRITICAL,HIGH'
+
+    - name: Run Trivy vulnerability scanner for security tab
+      uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+      continue-on-error: true
+      with:
+        image-ref: ${{ inputs.image-ref }}
+        vuln-type: 'os,library'
+        format: 'sarif'
+        output: '${{ inputs.category }}.sarif'
+        severity: 'CRITICAL,HIGH'
+        ignore-unfixed: true
+        limit-severities-for-sarif: true
+
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
+      continue-on-error: true
+      with:
+        sarif_file: '${{ inputs.category }}.sarif'
+        category: ${{ inputs.category }}
+        sha: ${{ github.sha }}
+        ref: refs/heads/main
